@@ -1,0 +1,115 @@
+@inherits WebUIComponent;
+@inject IJSRuntime JSRuntime;
+
+<iframe id="vdoNinjaIframe" allow="display-capture" style="display: none"></iframe>
+<div class="d-flex justify-content-center align-items-top" >
+<div class="card" style="width: 40rem;">
+    @if (stream && VDOUsername != null && VDOPassword != null)
+    {
+        <iframe id="vdoNinjaView" allow="display-capture;autoplay;" style="width: 100%; aspect-ratio: 16 / 9; height: auto;"  ></iframe>
+    }
+    <div class="card-body">
+        <div class="input-group mb-3">
+            <span class="input-group-text" id="basic-addon1">Room</span>
+            <input type="text" class="form-control"  aria-describedby="basic-addon1" @bind-value="VDOUsername" @bind-value:event="oninput">
+            <span class="input-group-text" id="basic-addon2">Password</span>
+            <input type="text" class="form-control"  aria-describedby="basic-addon2" @bind-value="VDOPassword" @bind-value:event="oninput">
+            <select @bind="quality" class="form-select" id="inputGroupSelect04" aria-label="Example select with button addon">
+                <option value="-1">Default</option>
+                <option value="0">1080p60</option>
+                <option value="1">720p60</option>
+                <option value="2">360p30</option>
+            </select>
+            @if (!stream) 
+            {
+                <button class="btn btn-success " style="width: 100px;" type="button" @onclick="ToggleStream">Start stream</button>
+            }
+            else
+            {
+                <button class="btn btn-danger " style="width: 100px;" type="button" @onclick="ToggleStream">
+                    <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+                    <span role="status">Streaming...</span>
+                </button>
+            }
+        </div>
+        
+        @if (stream)
+        {
+             
+            <div class="input-group input-group-sm mb-3">
+                <span class="input-group-text" id="inputGroup-sizing-sm" style="width: 50px;">Solo</span>
+                <input type="text" class="form-control" aria-label="Sizing example input" aria-describedby="inputGroup-sizing-sm" @bind="LinkSoloView" readonly>
+                <button type="button" @onclick="CopySolo" class="btn btn-secondary btn-sm"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-clipboard" viewBox="0 0 16 16">
+                    <path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1z"/>
+                    <path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0z"/>
+                </svg>
+                </button>
+            </div>
+            <div class="input-group input-group-sm mb-3">
+                <span class="input-group-text" id="inputGroup-sizing-sm" style="width: 50px;">Group</span>
+                <input type="text" class="form-control" aria-label="Sizing example input" aria-describedby="inputGroup-sizing-sm" @bind="LinkGroupView" readonly>
+                <button type="button" @onclick="CopyGroup" class="btn btn-secondary btn-sm"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-clipboard" viewBox="0 0 16 16">
+                        <path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1z"/>
+                        <path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0z"/>
+                    </svg>
+                </button>
+                
+            </div>
+        }
+    </div>
+</div>
+
+</div>
+<div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h1 class="modal-title fs-5" id="exampleModalLabel">Error</h1>
+        
+      </div>
+      <div class="modal-body">
+        The "Room" and "Password" fields cannot be empty.
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+@code{
+    private string VDOUsername;
+    private string VDOPassword;
+    private bool stream;
+    private int quality = -1;
+    private string LinkGroupView;
+    private string LinkSoloView;
+    private async Task ToggleStream()
+    {
+        if (string.IsNullOrEmpty(VDOUsername) || string.IsNullOrEmpty(VDOPassword))
+        {
+            await JSRuntime.InvokeVoidAsync("showModal", "exampleModal");
+            return;
+        }
+        stream = !stream;
+        if (stream)
+        {
+            LinkGroupView = $"https://vdo.ninja/?scene&room={VDOUsername}&password={VDOPassword}";
+            LinkSoloView = $"https://vdo.ninja/alpha/?view={hash}&room={VDOUsername}&password={VDOPassword}&solo&autostart";
+        }
+        if (VDOUsername != null && VDOPassword != null)
+        {
+            await JSRuntime.InvokeVoidAsync("toggleStream", VDOUsername, VDOPassword,hash,quality);
+            JSRuntime.InvokeVoidAsync("toggleView", VDOUsername, VDOPassword,hash);
+            
+        }
+    }
+    
+    private async Task CopySolo()
+    {
+        await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", LinkSoloView);
+    }
+    private async Task CopyGroup()
+    {
+        await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", LinkGroupView);
+    }
+}
